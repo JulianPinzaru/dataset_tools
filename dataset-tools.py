@@ -79,6 +79,10 @@ def parse_args():
 		default='255,255,255',
 		help='border color to use with the `solid` border type; use bgr values (default: %(default)s)')
 
+	parser.add_argument('--jpeg_quality', type=int,
+		default=100,
+		help='the quality for jpeg to be saved; use 90 or 100 for most of the cases (default: %(default)s)')
+
 	# parser.add_argument('--blur_size', type=int, 
 	# 	default=3,
 	# 	help='Blur size. For use with "canny" process. (default: %(default)s)')
@@ -239,7 +243,7 @@ def makeResize(img,filename,scale):
 		cv2.imwrite(os.path.join(remakePath, new_file), img_copy, [cv2.IMWRITE_PNG_COMPRESSION, 0])
 	elif(args.file_extension == "jpg"):
 		new_file = os.path.splitext(filename)[0] + ".jpg"
-		cv2.imwrite(os.path.join(remakePath, new_file), img_copy, [cv2.IMWRITE_JPEG_QUALITY, 90])
+		cv2.imwrite(os.path.join(remakePath, new_file), img_copy, [cv2.IMWRITE_JPEG_QUALITY, args.jpeg_quality])
 
 	if (args.mirror): flipImage(img_copy,new_file,remakePath)
 	if (args.rotate): rotateImage(img_copy,new_file,remakePath)
@@ -265,7 +269,7 @@ def makeDistance(img,filename,scale):
 		cv2.imwrite(os.path.join(makePath, new_file), img_copy, [cv2.IMWRITE_PNG_COMPRESSION, 0])
 	elif(args.file_extension == "jpg"):
 		new_file = os.path.splitext(filename)[0] + ".jpg"
-		cv2.imwrite(os.path.join(makePath, new_file), img_copy, [cv2.IMWRITE_JPEG_QUALITY, 90])
+		cv2.imwrite(os.path.join(makePath, new_file), img_copy, [cv2.IMWRITE_JPEG_QUALITY, args.jpeg_quality])
 
 	if (args.mirror): flipImage(img_copy,new_file,makePath)
 	if (args.rotate): rotateImage(img_copy,new_file,makePath)
@@ -292,7 +296,7 @@ def makeDistance(img,filename,scale):
 # 		cv2.imwrite(os.path.join(remakePath, new_file), img_copy, [cv2.IMWRITE_PNG_COMPRESSION, 0])
 # 	elif(args.file_extension == "jpg"):
 # 		new_file = os.path.splitext(filename)[0] + ".jpg"
-# 		cv2.imwrite(os.path.join(remakePath, new_file), img_copy, [cv2.IMWRITE_JPEG_QUALITY, 90])
+# 		cv2.imwrite(os.path.join(remakePath, new_file), img_copy, [cv2.IMWRITE_JPEG_QUALITY, args.jpeg_quality])
 
 # 	if (args.mirror): flipImage(img_copy,new_file,remakePath)
 # 	if (args.rotate): rotateImage(img_copy,new_file,remakePath)
@@ -360,7 +364,7 @@ def makeSquare(img,filename,scale):
 		cv2.imwrite(os.path.join(sqPath, new_file), img_sq, [cv2.IMWRITE_PNG_COMPRESSION, 0])
 	elif(args.file_extension == "jpg"):
 		new_file = os.path.splitext(filename)[0] + ".jpg"
-		cv2.imwrite(os.path.join(sqPath, new_file), img_sq, [cv2.IMWRITE_JPEG_QUALITY, 90])
+		cv2.imwrite(os.path.join(sqPath, new_file), img_sq, [cv2.IMWRITE_JPEG_QUALITY, args.jpeg_quality])
 
 	if (args.mirror): flipImage(img_sq,new_file,sqPath)
 	if (args.rotate): rotateImage(img_sq,new_file,sqPath)
@@ -383,7 +387,7 @@ def makeCanny(img,filename,scale):
 		cv2.imwrite(os.path.join(make_path, new_file), gray, [cv2.IMWRITE_PNG_COMPRESSION, 0])
 	elif(args.file_extension == "jpg"):
 		new_file = os.path.splitext(filename)[0] + ".jpg"
-		cv2.imwrite(os.path.join(make_path, new_file), gray, [cv2.IMWRITE_JPEG_QUALITY, 90])
+		cv2.imwrite(os.path.join(make_path, new_file), gray, [cv2.IMWRITE_JPEG_QUALITY, args.jpeg_quality])
 
 	if (args.mirror): flipImage(img_copy,new_file,make_path)
 	if (args.rotate): rotateImage(img_copy,new_file,make_path)
@@ -402,7 +406,7 @@ def makeCrop(img,filename):
 			cv2.imwrite(os.path.join(make_path, new_file), img_copy, [cv2.IMWRITE_PNG_COMPRESSION, 0])
 		elif(args.file_extension == "jpg"):
 			new_file = os.path.splitext(filename)[0] + ".jpg"
-			cv2.imwrite(os.path.join(make_path, new_file), img_copy, [cv2.IMWRITE_JPEG_QUALITY, 90])
+			cv2.imwrite(os.path.join(make_path, new_file), img_copy, [cv2.IMWRITE_JPEG_QUALITY, args.jpeg_quality])
 
 		if (args.mirror): flipImage(img_copy,new_file,make_path)
 		if (args.rotate): rotateImage(img_copy,new_file,make_path)
@@ -423,7 +427,7 @@ def makeSquareCrop(img,filename,scale):
 		cv2.imwrite(os.path.join(make_path, new_file), img_copy, [cv2.IMWRITE_PNG_COMPRESSION, 0])
 	elif(args.file_extension == "jpg"):
 		new_file = os.path.splitext(filename)[0] + ".jpg"
-		cv2.imwrite(os.path.join(make_path, new_file), img_copy, [cv2.IMWRITE_JPEG_QUALITY, 90])
+		cv2.imwrite(os.path.join(make_path, new_file), img_copy, [cv2.IMWRITE_JPEG_QUALITY, args.jpeg_quality])
 
 	if (args.mirror): flipImage(img_copy,new_file,make_path)
 	if (args.rotate): rotateImage(img_copy,new_file,make_path)
@@ -516,7 +520,7 @@ def makePix2Pix(img,filename,scale,direction="BtoA",value=[0,0,0]):
 		cv2.imwrite(os.path.join(make_path, new_file), img_p2p, [cv2.IMWRITE_PNG_COMPRESSION, 0])
 	elif(args.file_extension == "jpg"):
 		new_file = os.path.splitext(filename)[0] + ".jpg"
-		cv2.imwrite(os.path.join(make_path, new_file), img_p2p, [cv2.IMWRITE_JPEG_QUALITY, 90])
+		cv2.imwrite(os.path.join(make_path, new_file), img_p2p, [cv2.IMWRITE_JPEG_QUALITY, args.jpeg_quality])
 
 def flipImage(img,filename,path):
 	flip_img = cv2.flip(img, 1)
@@ -532,7 +536,7 @@ def rotateImage(img,filename,path):
 		cv2.imwrite(os.path.join(path, r_file), r, [cv2.IMWRITE_PNG_COMPRESSION, 0])
 	elif(args.file_extension == "jpg"):
 		r_file = os.path.splitext(filename)[0] + "-rot90.jpg"
-		cv2.imwrite(os.path.join(path, r_file), r, [cv2.IMWRITE_JPEG_QUALITY, 90])
+		cv2.imwrite(os.path.join(path, r_file), r, [cv2.IMWRITE_JPEG_QUALITY, args.jpeg_quality])
 
 	r = imutils.rotate_bound(r, 90)
 	if(args.file_extension == "png"):
@@ -540,7 +544,7 @@ def rotateImage(img,filename,path):
 		cv2.imwrite(os.path.join(path, r_file), r, [cv2.IMWRITE_PNG_COMPRESSION, 0])
 	elif(args.file_extension == "jpg"):
 		r_file = os.path.splitext(filename)[0] + "-rot180.jpg"
-		cv2.imwrite(os.path.join(path, r_file), r, [cv2.IMWRITE_JPEG_QUALITY, 90])
+		cv2.imwrite(os.path.join(path, r_file), r, [cv2.IMWRITE_JPEG_QUALITY, args.jpeg_quality])
 
 	r = imutils.rotate_bound(r, 90)
 	if(args.file_extension == "png"):
@@ -548,7 +552,7 @@ def rotateImage(img,filename,path):
 		cv2.imwrite(os.path.join(path, r_file), r, [cv2.IMWRITE_PNG_COMPRESSION, 0])
 	elif(args.file_extension == "jpg"):
 		r_file = os.path.splitext(filename)[0] + "-rot270.jpg"
-		cv2.imwrite(os.path.join(path, r_file), r, [cv2.IMWRITE_JPEG_QUALITY, 90])
+		cv2.imwrite(os.path.join(path, r_file), r, [cv2.IMWRITE_JPEG_QUALITY, args.jpeg_quality])
 
 def processImage(img,filename):
 
