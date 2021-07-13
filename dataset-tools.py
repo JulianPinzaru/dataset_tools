@@ -25,7 +25,7 @@ def parse_args():
 
 	parser.add_argument('--process_type', type=str,
 		default='resize',
-		help='Process to use. ["resize","square","crop_to_square","canny","canny-pix2pix","crop_square_patch","scale","many_squares","crop","distance"] (default: %(default)s)')
+		help='Process to use. ["resize","square","crop_center_square","crop_to_square","canny","canny-pix2pix","crop_square_patch","scale","many_squares","crop","distance"] (default: %(default)s)')
 
 	parser.add_argument('--blur_type', type=str,
 		default='none',
@@ -208,6 +208,16 @@ def crop_to_square(img):
 			cropped = img[diff:diff+w, 0:w]
 		
 	return cropped
+
+def crop_center_square(img, size, interpolation=cv2.INTER_AREA):
+    h, w = img.shape[:2]
+    min_size = np.amin([h,w])
+
+    # Centralize and crop
+    crop_img = img[int(h/2-min_size/2):int(h/2+min_size/2), int(w/2-min_size/2):int(w/2+min_size/2)]
+    resized = cv2.resize(crop_img, (size, size), interpolation=interpolation)
+
+    return resized
 
 def crop_square_patch(img, imgSize):
 	(h, w) = img.shape[:2]
@@ -413,6 +423,23 @@ def makeCrop(img,filename):
 	else:
 		if(args.verbose): print(filename+" returned an error")
 
+def makeCropCenterSquare(img,filename,max_size):
+	make_path = args.output_folder + "crop-center-square-"+str(max_size)+"/"
+	if not os.path.exists(make_path):
+		os.makedirs(make_path)
+	img_copy = img.copy()
+	img_copy = crop_center_square(img_copy, max_size)
+
+	if(args.file_extension == "png"):
+		new_file = os.path.splitext(filename)[0] + ".png"
+		cv2.imwrite(os.path.join(make_path, new_file), img_copy, [cv2.IMWRITE_PNG_COMPRESSION, 0])
+	elif(args.file_extension == "jpg"):
+		new_file = os.path.splitext(filename)[0] + ".jpg"
+		cv2.imwrite(os.path.join(make_path, new_file), img_copy, [cv2.IMWRITE_JPEG_QUALITY, args.jpeg_quality])
+
+	if (args.mirror): flipImage(img_copy,new_file,make_path)
+	if (args.rotate): rotateImage(img_copy,new_file,make_path)
+
 def makeSquareCrop(img,filename,scale):
 	make_path = args.output_folder + "sq-"+str(scale)+"/"
 	if not os.path.exists(make_path):
@@ -564,6 +591,8 @@ def processImage(img,filename):
 		makeSquare(img,filename,args.max_size)
 	if args.process_type == "crop_to_square":
 		makeSquareCrop(img,filename,args.max_size)
+	if args.process_type == "crop_center_square":
+		makeCropCenterSquare(img,filename,args.max_size)
 	if args.process_type == "canny":
 		makeCanny(img,filename,args.max_size)
 	if args.process_type == "canny-pix2pix":
