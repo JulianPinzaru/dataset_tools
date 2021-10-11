@@ -25,7 +25,7 @@ def parse_args():
 
 	parser.add_argument('--process_type', type=str,
 		default='resize',
-		help='Process to use. ["resize","square","crop_center_square","crop_to_square","canny","canny-pix2pix","crop_square_patch","scale","many_squares","crop","distance"] (default: %(default)s)')
+		help='Process to use. ["resize","resize_to_rectangle","square","crop_center_square","crop_to_square","canny","canny-pix2pix","crop_square_patch","scale","many_squares","crop","distance"] (default: %(default)s)')
 
 	parser.add_argument('--blur_type', type=str,
 		default='none',
@@ -107,47 +107,116 @@ def parse_args():
 
 
 def image_resize(image, width = None, height = None, max = None):
-    # initialize the dimensions of the image to be resized and
-    # grab the image size
-    dim = None
-    (h, w) = image.shape[:2]
+	# initialize the dimensions of the image to be resized and
+	# grab the image size
+	dim = None
+	(h, w) = image.shape[:2]
 
-    if max is not None:
-    	if w > h:
-    		# produce
-    		r = max / float(w)
-    		dim = (max, int(h * r))
-    	elif h > w:
-    		r = max / float(h)
-    		dim = (int(w * r), max)
-    	else :
-    		dim = (max, max)
+	if max is not None:
+		if w > h:
+			# produce
+			r = max / float(w)
+			dim = (max, int(h * r))
+		elif h > w:
+			r = max / float(h)
+			dim = (int(w * r), max)
+		else :
+			dim = (max, max)
 
-    else: 
-	    # if both the width and height are None, then return the
-	    # original image
-	    if width is None and height is None:
-	        return image
+	else: 
+		# if both the width and height are None, then return the
+		# original image
+		if width is None and height is None:
+			return image
 
-	    # check to see if the width is None
-	    if width is None:
-	        # calculate the ratio of the height and construct the
-	        # dimensions
-	        r = height / float(h)
-	        dim = (int(w * r), height)
+		# check to see if the width is None
+		if width is None:
+			# calculate the ratio of the height and construct the
+			# dimensions
+			r = height / float(h)
+			dim = (int(w * r), height)
 
-	    # otherwise, the height is None
-	    else:
-	        # calculate the ratio of the width and construct the
-	        # dimensions
-	        r = width / float(w)
-	        dim = (width, int(h * r))
+		# otherwise, the height is None
+		else:
+			# calculate the ratio of the width and construct the
+			# dimensions
+			r = width / float(w)
+			dim = (width, int(h * r))
 
-    # resize the image
-    resized = cv2.resize(image, dim, interpolation = inter)
+	# resize the image
+	resized = cv2.resize(image, dim, interpolation = inter)
 
-    # return the resized image
-    return resized
+	# return the resized image
+	return resized
+
+def image_resize_to_rectangle(image, target_width = 1280, target_height = 768):
+	# initialize the dimensions of the image to be resized and
+	# grab the image size
+	dim = None
+	(h, w) = image.shape[:2]
+
+	if h < target_height or w < target_width:
+		return image # Do nothing
+
+	is_rectangle = True if w > h else False
+	is_portrait = True if h > w else False
+	is_square = True if h == w else False
+
+	if is_rectangle:
+		# Scenarios: 1920x1080, 1440x1024 etc
+		ratio = np.amax([target_height / float(h), target_width / float(w)])
+
+		resize_width = int(ratio * w) if w - target_width < h - target_height else target_width 
+		resize_height = int(ratio * h) if w - target_width > h - target_height else target_height 
+		dim = (int(resize_width), int(resize_height))
+		resized = cv2.resize(image, dim, interpolation = inter)
+		(h, w) = resized.shape[:2] # 1365x768
+
+		# Centralize and crop
+		to_trim_width = w - target_width
+		to_trim_height = h - target_height
+		crop_img = resized[
+			int(to_trim_height/2) : int(h - to_trim_height/2),
+			int(to_trim_width/2) : int(w - to_trim_width/2)
+		]
+		return crop_img
+
+	if is_portrait:
+		# 1440x1800
+		ratio = target_width / float(w)
+		dim = (target_width, int(ratio * h))
+		resized = cv2.resize(image, dim, interpolation = inter)
+
+		(h, w) = resized.shape[:2] # 1280x1600
+
+		# Centralize and crop
+		to_trim_width = w - target_width
+		to_trim_height = h - target_height
+		crop_img = resized[
+			int(to_trim_height/2) : int(h - to_trim_height/2),
+			int(to_trim_width/2) : int(w - to_trim_width/2)
+		]
+		return crop_img
+
+	# if is_square:
+	# 	# Scenarios: 1920x1920
+	# 	ratio = target_width / float(w)
+	# 	dim = (target_width, int(ratio * h))
+	# 	resized = cv2.resize(image, dim, interpolation = interpolation)
+
+	# 	(h, w) = resized.shape[:2] # 1280x1280
+
+	# 	# Centralize and crop
+	# 	to_trim_width = w - target_width
+	# 	to_trim_height = h - target_height
+	# 	crop_img = resized[
+	# 		int(to_trim_height/2) : int(h - to_trim_height/2),
+	# 		int(to_trim_width/2) : int(w - to_trim_width/2)
+	# 	]
+	# 	return crop_img
+
+	return image
+
 
 def image_scale(image, scalar = 1.0):
 	(h, w) = image.shape[:2]
@@ -210,14 +279,14 @@ def crop_to_square(img):
 	return cropped
 
 def crop_center_square(img, size, interpolation=cv2.INTER_AREA):
-    h, w = img.shape[:2]
-    min_size = np.amin([h,w])
+	h, w = img.shape[:2]
+	min_size = np.amin([h,w])
 
-    # Centralize and crop
-    crop_img = img[int(h/2-min_size/2):int(h/2+min_size/2), int(w/2-min_size/2):int(w/2+min_size/2)]
-    resized = cv2.resize(crop_img, (size, size), interpolation=interpolation)
+	# Centralize and crop
+	crop_img = img[int(h/2-min_size/2):int(h/2+min_size/2), int(w/2-min_size/2):int(w/2+min_size/2)]
+	resized = cv2.resize(crop_img, (size, size), interpolation=interpolation)
 
-    return resized
+	return resized
 
 def crop_square_patch(img, imgSize):
 	(h, w) = img.shape[:2]
@@ -247,6 +316,24 @@ def makeResize(img,filename,scale):
 
 	img_copy = img.copy()
 	img_copy = image_resize(img_copy, max = scale)
+
+	if(args.file_extension == "png"):
+		new_file = os.path.splitext(filename)[0] + ".png"
+		cv2.imwrite(os.path.join(remakePath, new_file), img_copy, [cv2.IMWRITE_PNG_COMPRESSION, 0])
+	elif(args.file_extension == "jpg"):
+		new_file = os.path.splitext(filename)[0] + ".jpg"
+		cv2.imwrite(os.path.join(remakePath, new_file), img_copy, [cv2.IMWRITE_JPEG_QUALITY, args.jpeg_quality])
+
+	if (args.mirror): flipImage(img_copy,new_file,remakePath)
+	if (args.rotate): rotateImage(img_copy,new_file,remakePath)
+
+def makeResizeToRectangle(img,filename,width,height):
+	remakePath = args.output_folder + "resize_rectangle-"+str(width)+"x"+str(height)+"/"
+	if not os.path.exists(remakePath):
+		os.makedirs(remakePath)
+
+	img_copy = img.copy()
+	img_copy = image_resize_to_rectangle(img_copy, target_width = width, target_height = height)
 
 	if(args.file_extension == "png"):
 		new_file = os.path.splitext(filename)[0] + ".png"
@@ -585,6 +672,8 @@ def processImage(img,filename):
 
 	if args.process_type == "resize":	
 		makeResize(img,filename,args.max_size)
+	if args.process_type == 'resize_to_rectangle':
+		makeResizeToRectangle(img,filename,args.width,args.height)
 	if args.process_type == "resize_pad":	
 		makeResizePad(img,filename,args.max_size)
 	if args.process_type == "square":
