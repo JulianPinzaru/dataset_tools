@@ -5,6 +5,7 @@ import os
 import imutils
 import cv2
 import random
+import math
 
 # print(cv2.__version__)
 
@@ -170,8 +171,8 @@ def image_resize_to_rectangle(image, target_width = 1280, target_height = 768):
 		# Scenarios: 1920x1080, 1440x1024 etc
 		ratio = np.amax([target_height / float(h), target_width / float(w)])
 
-		resize_width = int(ratio * w) if w - target_width < h - target_height else target_width 
-		resize_height = int(ratio * h) if w - target_width > h - target_height else target_height 
+		resize_width = math.ceil(ratio * w) if w - target_width < h - target_height else target_width
+		resize_height = math.ceil(ratio * h) if w - target_width > h - target_height else target_height 
 		dim = (int(resize_width), int(resize_height))
 		resized = cv2.resize(image, dim, interpolation = inter)
 		(h, w) = resized.shape[:2] # 1365x768
@@ -188,7 +189,7 @@ def image_resize_to_rectangle(image, target_width = 1280, target_height = 768):
 	if is_portrait:
 		# 1440x1800
 		ratio = target_width / float(w)
-		dim = (target_width, int(ratio * h))
+		dim = (target_width, math.ceil(ratio * h))
 		resized = cv2.resize(image, dim, interpolation = inter)
 
 		(h, w) = resized.shape[:2] # 1280x1600
@@ -330,7 +331,7 @@ def makeResize(img,filename,scale):
 	if (args.rotate): rotateImage(img_copy,new_file,remakePath)
 
 def makeResizeToRectangle(img,filename,width,height):
-	remakePath = args.output_folder + "resize_rectangle-"+str(width)+"x"+str(height)+"/"
+	remakePath = args.output_folder + "-resize_rectangle-"+str(width)+"x"+str(height)+"/"
 	if not os.path.exists(remakePath):
 		os.makedirs(remakePath)
 
