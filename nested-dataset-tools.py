@@ -5,6 +5,7 @@ import os
 import imutils
 import cv2
 import random
+import math
 
 # print(cv2.__version__)
 
@@ -25,7 +26,7 @@ def parse_args():
 
 	parser.add_argument('--process_type', type=str,
 		default='resize',
-		help='Process to use. ["resize","square","crop_to_square","canny","canny-pix2pix","crop_square_patch","scale","many_squares","crop","distance"] (default: %(default)s)')
+		help='Process to use. ["resize","resize_to_rectangle","square","crop_center_square","crop_to_square","canny","canny-pix2pix","crop_square_patch","scale","many_squares","crop","distance"] (default: %(default)s)')
 
 	parser.add_argument('--blur_type', type=str,
 		default='none',
@@ -149,6 +150,76 @@ def image_resize(image, width = None, height = None, max = None):
     # return the resized image
     return resized
 
+def image_resize_to_rectangle(image, target_width = 1280, target_height = 768):
+	assert target_width > target_height
+
+	# initialize the dimensions of the image to be resized and
+	# grab the image size
+	dim = None
+	(h, w) = image.shape[:2]
+
+	need_to_stretch = h < target_height or w < target_width
+	if need_to_stretch: # for smaller images we just do a raw resize dont care about ratio or proprotions
+		resized = cv2.resize(image, (target_width, target_height), interpolation = inter)
+		return resized
+
+	is_rectangle = True if w > h else False
+	is_portrait = True if h > w else False
+	is_square = True if h == w else False
+
+	if is_rectangle:
+		# Scenarios: 1920x1080, 1440x1024 etc
+		ratio = np.amax([target_height / float(h), target_width / float(w)])
+
+		resize_width = math.ceil(ratio * w) if w - target_width < h - target_height else target_width
+		resize_height = math.ceil(ratio * h) if w - target_width > h - target_height else target_height 
+		dim = (int(resize_width), int(resize_height))
+		resized = cv2.resize(image, dim, interpolation = inter)
+		(h, w) = resized.shape[:2] # 1365x768
+
+		# Centralize and crop
+		to_trim_width = w - target_width
+		to_trim_height = h - target_height
+		crop_img = resized[
+			int(to_trim_height/2) : int(h - to_trim_height/2),
+			int(to_trim_width/2) : int(w - to_trim_width/2)
+		]
+		return crop_img
+
+	if is_portrait:
+		# 1440x1800
+		ratio = target_width / float(w)
+		dim = (target_width, math.ceil(ratio * h))
+		resized = cv2.resize(image, dim, interpolation = inter)
+
+		(h, w) = resized.shape[:2] # 1280x1600
+
+		# Centralize and crop
+		to_trim_width = w - target_width
+		to_trim_height = h - target_height
+		crop_img = resized[
+			int(to_trim_height/2) : int(h - to_trim_height/2),
+			int(to_trim_width/2) : int(w - to_trim_width/2)
+		]
+		return crop_img
+
+	if is_square:
+		# Scenarios: 1920x1080, 1440x1024 etc
+		dim = (target_width, target_width) # keep it square
+		resized = cv2.resize(image, dim, interpolation = inter)
+		(h, w) = resized.shape[:2] # 1365x768
+
+		# Centralize and crop
+		to_trim_width = w - target_width
+		to_trim_height = h - target_height
+		crop_img = resized[
+			int(to_trim_height/2) : int(h - to_trim_height/2),
+			int(to_trim_width/2) : int(w - to_trim_width/2)
+		]
+		return crop_img
+
+	return image
+
 def image_scale(image, scalar = 1.0):
 	(h, w) = image.shape[:2]
 	dim = (int(w*scalar),int(h*scalar))
@@ -209,6 +280,16 @@ def crop_to_square(img):
 		
 	return cropped
 
+def crop_center_square(img, size, interpolation=cv2.INTER_AREA):
+	h, w = img.shape[:2]
+	min_size = np.amin([h,w])
+
+	# Centralize and crop
+	crop_img = img[int(h/2-min_size/2):int(h/2+min_size/2), int(w/2-min_size/2):int(w/2+min_size/2)]
+	resized = cv2.resize(crop_img, (size, size), interpolation=interpolation)
+
+	return resized
+
 def crop_square_patch(img, imgSize):
 	(h, w) = img.shape[:2]
 
@@ -248,6 +329,24 @@ def makeResize(img,filename,scale,subdir):
 	if (args.mirror): flipImage(img_copy,new_file,remakePath)
 	if (args.rotate): rotateImage(img_copy,new_file,remakePath)
 
+def makeResizeToRectangle(img,filename,width,height):
+	remakePath = args.output_folder + "resize_rectangle-"+str(width)+"x"+str(height)+"/"
+	if not os.path.exists(remakePath):
+		os.makedirs(remakePath)
+
+	img_copy = img.copy()
+	img_copy = image_resize_to_rectangle(img_copy, target_width = width, target_height = height)
+
+	if(args.file_extension == "png"):
+		new_file = os.path.splitext(filename)[0] + ".png"
+		cv2.imwrite(os.path.join(remakePath, new_file), img_copy, [cv2.IMWRITE_PNG_COMPRESSION, 0])
+	elif(args.file_extension == "jpg"):
+		new_file = os.path.splitext(filename)[0] + ".jpg"
+		cv2.imwrite(os.path.join(remakePath, new_file), img_copy, [cv2.IMWRITE_JPEG_QUALITY, args.jpeg_quality])
+
+	if (args.mirror): flipImage(img_copy,new_file,remakePath)
+	if (args.rotate): rotateImage(img_copy,new_file,remakePath)
+
 def makeDistance(img,filename,scale,subdir):
 	makePath = args.output_folder + "distance-"+ str(args.max_size)+"/" + subdir + "/"
 	if not os.path.exists(makePath):
@@ -274,33 +373,6 @@ def makeDistance(img,filename,scale,subdir):
 	if (args.mirror): flipImage(img_copy,new_file,makePath)
 	if (args.rotate): rotateImage(img_copy,new_file,makePath)
 
-# def makeResizePad(img,filename,scale):
-# 	remakePath = args.output_folder + str(scale)+"/"
-# 	if not os.path.exists(remakePath):
-# 		os.makedirs(remakePath)
-
-# 	img_copy = img.copy()
-
-# 	bType = cv2.BORDER_REPLICATE
-# 	if(args.border_type == 'solid'):
-# 		bType = cv2.BORDER_CONSTANT
-# 	elif (args.border_type == 'reflect'):
-# 		bType = cv2.BORDER_REFLECT
-
-# 	(h, w) = img_copy.shape[:2]
-
-# 	if(h < scale):
-
-# 	if(args.file_extension == "png"):
-# 		new_file = os.path.splitext(filename)[0] + ".png"
-# 		cv2.imwrite(os.path.join(remakePath, new_file), img_copy, [cv2.IMWRITE_PNG_COMPRESSION, 0])
-# 	elif(args.file_extension == "jpg"):
-# 		new_file = os.path.splitext(filename)[0] + ".jpg"
-# 		cv2.imwrite(os.path.join(remakePath, new_file), img_copy, [cv2.IMWRITE_JPEG_QUALITY, args.jpeg_quality])
-
-# 	if (args.mirror): flipImage(img_copy,new_file,remakePath)
-# 	if (args.rotate): rotateImage(img_copy,new_file,remakePath)
-
 def makeScale(img,filename,scale,subdir):
 
 	remakePath = args.output_folder + "scale_"+str(scale)+"/" + subdir + "/"
@@ -316,7 +388,6 @@ def makeScale(img,filename,scale,subdir):
 
 	if (args.mirror): flipImage(img_copy,new_file,remakePath)
 	if (args.rotate): rotateImage(img_copy,new_file,remakePath)
-
 
 def makeSquare(img,filename,scale,subdir):
 	sqPath = args.output_folder + "sq-"+str(scale)+"/" + subdir + "/"
@@ -557,27 +628,32 @@ def rotateImage(img,filename,path):
 def processImage(img,filename,subdir):
 
 	if args.process_type == "resize":	
-		makeResize(img,filename,args.max_size,subdir)
+		makeResize(img,filename,args.max_size)
+	if args.process_type == 'resize_to_rectangle':
+		makeResizeToRectangle(img,filename,args.width,args.height)
 	if args.process_type == "resize_pad":	
-		makeResizePad(img,filename,args.max_size,subdir)
+		makeResizePad(img,filename,args.max_size)
 	if args.process_type == "square":
-		makeSquare(img,filename,args.max_size,subdir)
+		makeSquare(img,filename,args.max_size)
 	if args.process_type == "crop_to_square":
-		makeSquareCrop(img,filename,args.max_size,subdir)
+		makeSquareCrop(img,filename,args.max_size)
+	if args.process_type == "crop_center_square":
+		makeCropCenterSquare(img,filename,args.max_size)
 	if args.process_type == "canny":
-		makeCanny(img,filename,args.max_size,subdir)
+		makeCanny(img,filename,args.max_size)
 	if args.process_type == "canny-pix2pix":
-		makePix2Pix(img,filename,args.max_size,subdir)
+		makePix2Pix(img,filename,args.max_size)
 	if args.process_type == "crop_square_patch":
-		makeSquareCropPatch(img,filename,args.max_size,subdir)
+		makeSquareCropPatch(img,filename,args.max_size)
 	if args.process_type == "scale":
-		makeScale(img,filename,args.scale,subdir)
+		makeScale(img,filename,args.scale)
 	if args.process_type == "many_squares":
-		makeManySquares(img,filename,args.max_size,subdir)
+		makeManySquares(img,filename,args.max_size)
 	if args.process_type == "crop":
-		makeCrop(img,filename,subdir)
+		makeCrop(img,filename)
 	if args.process_type == "distance":
-		makeDistance(img,filename,args.max_size,subdir)
+		makeDistance(img,filename,args.max_size)
+
 
 def main():
 	global args
