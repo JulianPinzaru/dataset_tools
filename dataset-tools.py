@@ -161,10 +161,10 @@ def image_resize_to_rectangle(image, target_width=1280, target_height=768, allow
 	dim = None
 	(h, w) = image.shape[:2]
 
-	if allow_rotating and h > target_width:
-		# why not rotating it ?
-		image = imutils.rotate_bound(image, 90)
-		(h, w) = image.shape[:2]
+    if allow_rotating and h > w:
+        # why not rotating it ?
+        image = imutils.rotate_bound(image, 90)
+        (h, w) = image.shape[:2]
 
 	need_to_stretch = h < target_height or w < target_width
 	if need_to_stretch: # for smaller images we just do a raw resize dont care about ratio or proprotions

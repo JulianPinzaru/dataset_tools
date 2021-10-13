@@ -161,7 +161,7 @@ def image_resize_to_rectangle(image, target_width=1280, target_height=768, allow
     dim = None
     (h, w) = image.shape[:2]
 
-    if allow_rotating and h > target_width:
+    if allow_rotating and h > w:
         # why not rotating it ?
         image = imutils.rotate_bound(image, 90)
         (h, w) = image.shape[:2]
