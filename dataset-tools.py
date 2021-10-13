@@ -155,8 +155,10 @@ def image_resize_to_rectangle(image, target_width = 1280, target_height = 768):
 	dim = None
 	(h, w) = image.shape[:2]
 
-	if h < target_height or w < target_width:
-		return image # Do nothing
+	need_to_stretch = h < target_height or w < target_width
+	if need_to_stretch: # for smaller images we just do a raw resize dont care about ratio or proprotions
+		resized = cv2.resize(image, (target_width, target_height), interpolation = inter)
+		return resized
 
 	is_rectangle = True if w > h else False
 	is_portrait = True if h > w else False
@@ -198,22 +200,20 @@ def image_resize_to_rectangle(image, target_width = 1280, target_height = 768):
 		]
 		return crop_img
 
-	# if is_square:
-	# 	# Scenarios: 1920x1920
-	# 	ratio = target_width / float(w)
-	# 	dim = (target_width, int(ratio * h))
-	# 	resized = cv2.resize(image, dim, interpolation = interpolation)
+	if is_square:
+		# Scenarios: 1920x1080, 1440x1024 etc
+		dim = (target_width, target_width) # keep it square
+		resized = cv2.resize(image, dim, interpolation = inter)
+		(h, w) = resized.shape[:2] # 1365x768
 
-	# 	(h, w) = resized.shape[:2] # 1280x1280
-
-	# 	# Centralize and crop
-	# 	to_trim_width = w - target_width
-	# 	to_trim_height = h - target_height
-	# 	crop_img = resized[
-	# 		int(to_trim_height/2) : int(h - to_trim_height/2),
-	# 		int(to_trim_width/2) : int(w - to_trim_width/2)
-	# 	]
-	# 	return crop_img
+		# Centralize and crop
+		to_trim_width = w - target_width
+		to_trim_height = h - target_height
+		crop_img = resized[
+			int(to_trim_height/2) : int(h - to_trim_height/2),
+			int(to_trim_width/2) : int(w - to_trim_width/2)
+		]
+		return crop_img
 
 	return image
 
