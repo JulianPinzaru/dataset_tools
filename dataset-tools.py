@@ -48,6 +48,9 @@ def parse_args():
 		default=512,
 		help='Maximum width of output image (for use with --process_type crop). (default: %(default)s)')
 
+	parser.add_argument('--allow_rotating', action='store_true',
+		help='Used for resize_to_rectangle to rotate images that are portraits. (default: %(default)s)')
+
 	parser.add_argument('--shift_y', type=int, 
 		default=0,
 		help='y coordinate shift (for use with --process_type crop). (default: %(default)s)')
@@ -150,13 +153,18 @@ def image_resize(image, width = None, height = None, max = None):
 	# return the resized image
 	return resized
 
-def image_resize_to_rectangle(image, target_width = 1280, target_height = 768):
+def image_resize_to_rectangle(image, target_width=1280, target_height=768, allow_rotating=True):
 	assert target_width > target_height
 
 	# initialize the dimensions of the image to be resized and
 	# grab the image size
 	dim = None
 	(h, w) = image.shape[:2]
+
+	if allow_rotating and h > target_width:
+		# why not rotating it ?
+		image = imutils.rotate_bound(image, 90)
+		(h, w) = image.shape[:2]
 
 	need_to_stretch = h < target_height or w < target_width
 	if need_to_stretch: # for smaller images we just do a raw resize dont care about ratio or proprotions
@@ -167,7 +175,7 @@ def image_resize_to_rectangle(image, target_width = 1280, target_height = 768):
 	is_portrait = True if h > w else False
 	is_square = True if h == w else False
 
-	if is_rectangle:
+	if is_rectangle or is_portrait:
 		# Scenarios: 1920x1080, 1440x1024 etc
 		ratio = np.amax([target_height / float(h), target_width / float(w)])
 
@@ -176,23 +184,6 @@ def image_resize_to_rectangle(image, target_width = 1280, target_height = 768):
 		dim = (int(resize_width), int(resize_height))
 		resized = cv2.resize(image, dim, interpolation = inter)
 		(h, w) = resized.shape[:2] # 1365x768
-
-		# Centralize and crop
-		to_trim_width = w - target_width
-		to_trim_height = h - target_height
-		crop_img = resized[
-			int(to_trim_height/2) : int(h - to_trim_height/2),
-			int(to_trim_width/2) : int(w - to_trim_width/2)
-		]
-		return crop_img
-
-	if is_portrait:
-		# 1440x1800
-		ratio = target_width / float(w)
-		dim = (target_width, math.ceil(ratio * h))
-		resized = cv2.resize(image, dim, interpolation = inter)
-
-		(h, w) = resized.shape[:2] # 1280x1600
 
 		# Centralize and crop
 		to_trim_width = w - target_width
@@ -330,13 +321,13 @@ def makeResize(img,filename,scale):
 	if (args.mirror): flipImage(img_copy,new_file,remakePath)
 	if (args.rotate): rotateImage(img_copy,new_file,remakePath)
 
-def makeResizeToRectangle(img,filename,width,height):
+def makeResizeToRectangle(img,filename,width,height,allow_rotating):
 	remakePath = args.output_folder + "-resize_rectangle-"+str(width)+"x"+str(height)+"/"
 	if not os.path.exists(remakePath):
 		os.makedirs(remakePath)
 
 	img_copy = img.copy()
-	img_copy = image_resize_to_rectangle(img_copy, target_width = width, target_height = height)
+	img_copy = image_resize_to_rectangle(img_copy, target_width = width, target_height = height, allow_rotating=allow_rotating)
 
 	if(args.file_extension == "png"):
 		new_file = os.path.splitext(filename)[0] + ".png"
@@ -649,7 +640,7 @@ def processImage(img,filename):
 	if args.process_type == "resize":	
 		makeResize(img,filename,args.max_size)
 	if args.process_type == 'resize_to_rectangle':
-		makeResizeToRectangle(img,filename,args.width,args.height)
+		makeResizeToRectangle(img,filename,args.width,args.height,args.allow_rotating)
 	if args.process_type == "resize_pad":	
 		makeResizePad(img,filename,args.max_size)
 	if args.process_type == "square":
